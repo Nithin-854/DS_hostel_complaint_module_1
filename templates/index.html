@@ -1,0 +1,399 @@
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hostel Utility Portal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            overflow: hidden;
+            padding: 40px;
+        }
+
+        h1, h2, h3 { margin-top: 0; }
+
+        .role-wrapper {
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .role-btn {
+            padding: 15px 30px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-student { background-color: var(--primary); color: white; }
+        .btn-warden { background-color: var(--text); color: white; }
+
+        .role-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .hidden { display: none; }
+        .fade-in { animation: fadeIn 0.4s ease-in; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background-color: var(--success);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .submit-btn:hover { background-color: #059669; }
+        .submit-btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th {
+            text-align: left;
+            padding: 16px;
+            background-color: #f9fafb;
+            color: #6b7280;
+            font-weight: 600;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-pending { background-color: #fee2e2; color: #991b1b; }
+        .badge-done { background-color: #d1fae5; color: #065f46; }
+
+        .action-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .action-btn:hover { background-color: #4338ca; }
+
+        .loader {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #FFF;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .notification {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <div id="role-select" class="role-wrapper fade-in">
+            <h1 style="font-size: 2.5rem; margin-bottom: 10px;">Hostel Portal</h1>
+            <p style="color: #6b7280; margin-bottom: 40px;">Select your dashboard to continue</p>
+            <button class="role-btn btn-student" onclick="navigate('student')">Student Access</button>
+            <button class="role-btn btn-warden" onclick="navigate('warden')">Warden Access</button>
+        </div>
+
+        <div id="student-view" class="hidden">
+            <div class="header-nav">
+                <h2>New Complaint</h2>
+                <button class="back-btn" onclick="navigate('home')">← Back to Home</button>
+            </div>
+
+            <div style="max-width: 600px; margin: 0 auto;">
+                <label>Room Number</label>
+                <input type="text" id="s-room" placeholder="e.g. 304-B">
+
+                <label>Category</label>
+                <select id="s-cat">
+                    <option value="Water">Water Supply</option>
+                    <option value="Electricity">Electricity / Fan</option>
+                    <option value="Cleanliness">Room Cleaning</option>
+                    <option value="Furniture">Furniture Repair</option>
+                    <option value="Wifi">Wi-Fi Issue</option>
+                </select>
+
+                <label>Description</label>
+                <textarea id="s-desc" rows="4" placeholder="Briefly describe the issue..."></textarea>
+
+                <button id="submit-btn" class="submit-btn" onclick="sendComplaint()">
+                    <span id="btn-text">Submit Ticket</span>
+                    <div id="loader" class="loader"></div>
+                </button>
+
+                <div id="s-notify" class="notification"></div>
+            </div>
+        </div>
+
+        <div id="warden-view" class="hidden">
+            <div class="header-nav">
+                <h2>Dashboard</h2>
+                <button class="back-btn" onclick="navigate('home')">← Log Out</button>
+            </div>
+
+            <h3 style="color: var(--danger);">⚠ Pending Actions</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Room</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pending-list"></tbody>
+                </table>
+            </div>
+
+            <h3 style="color: var(--success); margin-top: 40px;">✓ Resolved History</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Room</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="completed-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const socket = io();
+
+        function navigate(view) {
+            document.getElementById('role-select').classList.add('hidden');
+            document.getElementById('student-view').classList.add('hidden');
+            document.getElementById('warden-view').classList.add('hidden');
+
+            if(view === 'home') {
+                document.getElementById('role-select').classList.remove('hidden');
+                document.getElementById('role-select').classList.add('fade-in');
+            } else if (view === 'student') {
+                document.getElementById('student-view').classList.remove('hidden');
+                document.getElementById('student-view').classList.add('fade-in');
+            } else if (view === 'warden') {
+                document.getElementById('warden-view').classList.remove('hidden');
+                document.getElementById('warden-view').classList.add('fade-in');
+                socket.emit('request_all_data');
+            }
+        }
+
+        function sendComplaint() {
+            const room = document.getElementById('s-room').value;
+            const cat = document.getElementById('s-cat').value;
+            const desc = document.getElementById('s-desc').value;
+
+            if(!room || !desc) {
+                alert("Please fill all fields.");
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            const loader = document.getElementById('loader');
+            const txt = document.getElementById('btn-text');
+
+            btn.disabled = true;
+            txt.style.display = 'none';
+            loader.style.display = 'block';
+
+            socket.emit('lodge_complaint', {
+                room: room,
+                category: cat,
+                description: desc
+            });
+        }
+
+        socket.on('complaint_lodged', (data) => {
+            const btn = document.getElementById('submit-btn');
+            const loader = document.getElementById('loader');
+            const txt = document.getElementById('btn-text');
+            const notify = document.getElementById('s-notify');
+
+            loader.style.display = 'none';
+            txt.style.display = 'inline';
+            btn.disabled = false;
+
+            notify.style.display = 'block';
+            notify.style.backgroundColor = '#d1fae5';
+            notify.style.color = '#065f46';
+            notify.innerText = data.msg;
+
+            document.getElementById('s-room').value = '';
+            document.getElementById('s-desc').value = '';
+
+            setTimeout(() => { notify.style.display = 'none'; }, 3000);
+        });
+
+        socket.on('update_data', (data) => {
+            renderWarden(data);
+        });
+
+        socket.on('refresh_warden', (data) => {
+            renderWarden(data);
+        });
+
+        function renderWarden(data) {
+            const pList = document.getElementById('pending-list');
+            const cList = document.getElementById('completed-list');
+
+            pList.innerHTML = '';
+            cList.innerHTML = '';
+
+            if(data.length === 0) {
+                pList.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#9ca3af;">No records found</td></tr>';
+            }
+
+            data.forEach(item => {
+                if(item.status === 'Pending') {
+                    const row = `
+                        <tr>
+                            <td>#${item.id}</td>
+                            <td style="font-weight:bold;">${item.room}</td>
+                            <td>${item.category}</td>
+                            <td>${item.description}</td>
+                            <td><span class="badge badge-pending">Pending</span></td>
+                            <td>
+                                <button class="action-btn" onclick="resolve(${item.id})">Mark Done</button>
+                            </td>
+                        </tr>
+                    `;
+                    pList.innerHTML += row;
+                } else {
+                    const row = `
+                        <tr>
+                            <td>#${item.id}</td>
+                            <td style="font-weight:bold;">${item.room}</td>
+                            <td>${item.category}</td>
+                            <td>${item.description}</td>
+                            <td><span class="badge badge-done">Resolved</span></td>
+                        </tr>
+                    `;
+                    cList.innerHTML += row;
+                }
+            });
+        }
+
+        function resolve(id) {
+            if(confirm("Confirm that this issue is resolved?")) {
+                socket.emit('resolve_complaint', { id: id });
+            }
+        }
+    </script>
+</body>
+</html>
